@@ -10,3 +10,6 @@ export {
 } from './createReadableSparseStream'
 export { default as createSyntheticStream } from './createSyntheticStream'
 export { default as mergeVhd } from './merge'
+export {
+  default as createVhdStreamWithLength,
+} from './createVhdStreamWithLength'
