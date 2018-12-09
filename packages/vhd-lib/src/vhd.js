@@ -1,7 +1,5 @@
 import assert from 'assert'
-import { fromEvent } from 'promise-toolbox'
 
-import constantStream from './_constant-stream'
 import { fuFooter, fuHeader, checksumStruct, unpackField } from './_structs'
 import { set as mapSetBit, test as mapTestBit } from './_bitmap'
 import {
@@ -79,11 +77,11 @@ BUF_BLOCK_UNUSED.writeUInt32BE(BLOCK_UNUSED, 0)
 // - sectorSize = 512
 
 export default class Vhd {
-  get batSize () {
+  get batSize() {
     return computeBatSize(this.header.maxTableEntries)
   }
 
-  constructor (handler, path) {
+  constructor(handler, path) {
     this._handler = handler
     this._path = path
   }
@@ -92,7 +90,7 @@ export default class Vhd {
   // Read functions.
   // =================================================================
 
-  async _read (start, n) {
+  async _read(start, n) {
     const { bytesRead, buffer } = await this._handler.read(
       this._path,
       Buffer.alloc(n),
@@ -102,12 +100,12 @@ export default class Vhd {
     return buffer
   }
 
-  containsBlock (id) {
+  containsBlock(id) {
     return this._getBatEntry(id) !== BLOCK_UNUSED
   }
 
   // Returns the first address after metadata. (In bytes)
-  getEndOfHeaders () {
+  getEndOfHeaders() {
     const { header } = this
 
     let end = FOOTER_SIZE + HEADER_SIZE
@@ -132,7 +130,7 @@ export default class Vhd {
   }
 
   // Returns the first sector after data.
-  getEndOfData () {
+  getEndOfData() {
     let end = Math.ceil(this.getEndOfHeaders() / SECTOR_SIZE)
 
     const fullBlockSize = this.sectorsOfBitmap + this.sectorsPerBlock
@@ -153,7 +151,7 @@ export default class Vhd {
   // TODO: extract the checks into reusable functions:
   // - better human reporting
   // - auto repair if possible
-  async readHeaderAndFooter (checkSecondFooter = true) {
+  async readHeaderAndFooter(checkSecondFooter = true) {
     const buf = await this._read(0, FOOTER_SIZE + HEADER_SIZE)
     const bufFooter = buf.slice(0, FOOTER_SIZE)
     const bufHeader = buf.slice(FOOTER_SIZE)
@@ -206,7 +204,7 @@ export default class Vhd {
   }
 
   // Returns a buffer that contains the block allocation table of a vhd file.
-  async readBlockAllocationTable () {
+  async readBlockAllocationTable() {
     const { header } = this
     this.blockTable = await this._read(
       header.tableOffset,
@@ -215,11 +213,11 @@ export default class Vhd {
   }
 
   // return the first sector (bitmap) of a block
-  _getBatEntry (block) {
+  _getBatEntry(block) {
     return this.blockTable.readUInt32BE(block * 4)
   }
 
-  _readBlock (blockId, onlyBitmap = false) {
+  _readBlock(blockId, onlyBitmap = false) {
     const blockAddr = this._getBatEntry(blockId)
     if (blockAddr === BLOCK_UNUSED) {
       throw new Error(`no such block ${blockId}`)
@@ -243,7 +241,7 @@ export default class Vhd {
   // get the identifiers and first sectors of the first and last block
   // in the file
   //
-  _getFirstAndLastBlocks () {
+  _getFirstAndLastBlocks() {
     const n = this.header.maxTableEntries
     const bat = this.blockTable
     let i = 0
@@ -287,27 +285,17 @@ export default class Vhd {
   // Write functions.
   // =================================================================
 
-  // Write a buffer/stream at a given position in a vhd file.
-  async _write (data, offset) {
+  // Write a buffer at a given position in a vhd file.
+  async _write(data, offset) {
     debug(
       `_write offset=${offset} size=${
         Buffer.isBuffer(data) ? data.length : '???'
       }`
     )
-    // TODO: could probably be merged in remote handlers.
-    const stream = await this._handler.createOutputStream(this._path, {
-      flags: 'r+',
-      start: offset,
-    })
-    return Buffer.isBuffer(data)
-      ? new Promise((resolve, reject) => {
-          stream.on('error', reject)
-          stream.end(data, resolve)
-        })
-      : fromEvent(data.pipe(stream), 'finish')
+    return this._handler.write(this._path, data, offset)
   }
 
-  async _freeFirstBlockSpace (spaceNeededBytes) {
+  async _freeFirstBlockSpace(spaceNeededBytes) {
     try {
       const { first, firstSector, lastSector } = this._getFirstAndLastBlocks()
       const tableOffset = this.header.tableOffset
@@ -347,7 +335,7 @@ export default class Vhd {
     }
   }
 
-  async ensureBatSize (entries) {
+  async ensureBatSize(entries) {
     const { header } = this
     const prevMaxTableEntries = header.maxTableEntries
     if (prevMaxTableEntries >= entries) {
@@ -365,14 +353,14 @@ export default class Vhd {
       `ensureBatSize: extend BAT ${prevMaxTableEntries} -> ${maxTableEntries}`
     )
     await this._write(
-      constantStream(BUF_BLOCK_UNUSED, maxTableEntries - prevMaxTableEntries),
+      Buffer.alloc(maxTableEntries - prevMaxTableEntries, BUF_BLOCK_UNUSED),
       header.tableOffset + prevBat.length
     )
     await this.writeHeader()
   }
 
   // set the first sector (bitmap) of a block
-  _setBatEntry (block, blockSector) {
+  _setBatEntry(block, blockSector) {
     const i = block * 4
     const { blockTable } = this
 
@@ -383,17 +371,14 @@ export default class Vhd {
 
   // Make a new empty block at vhd end.
   // Update block allocation table in context and in file.
-  async createBlock (blockId) {
+  async createBlock(blockId) {
     const blockAddr = Math.ceil(this.getEndOfData() / SECTOR_SIZE)
 
     debug(`create block ${blockId} at ${blockAddr}`)
 
     await Promise.all([
       // Write an empty block and addr in vhd file.
-      this._write(
-        constantStream([0], this.fullBlockSize),
-        sectorsToBytes(blockAddr)
-      ),
+      this._write(Buffer.alloc(this.fullBlockSize), sectorsToBytes(blockAddr)),
 
       this._setBatEntry(blockId, blockAddr),
     ])
@@ -402,7 +387,7 @@ export default class Vhd {
   }
 
   // Write a bitmap at a block address.
-  async writeBlockBitmap (blockAddr, bitmap) {
+  async writeBlockBitmap(blockAddr, bitmap) {
     const { bitmapSize } = this
 
     if (bitmap.length !== bitmapSize) {
@@ -419,7 +404,7 @@ export default class Vhd {
     await this._write(bitmap, sectorsToBytes(blockAddr))
   }
 
-  async writeEntireBlock (block) {
+  async writeEntireBlock(block) {
     let blockAddr = this._getBatEntry(block.id)
 
     if (blockAddr === BLOCK_UNUSED) {
@@ -428,7 +413,7 @@ export default class Vhd {
     await this._write(block.buffer, sectorsToBytes(blockAddr))
   }
 
-  async writeBlockSectors (block, beginSectorId, endSectorId, parentBitmap) {
+  async writeBlockSectors(block, beginSectorId, endSectorId, parentBitmap) {
     let blockAddr = this._getBatEntry(block.id)
 
     if (blockAddr === BLOCK_UNUSED) {
@@ -460,7 +445,7 @@ export default class Vhd {
     )
   }
 
-  async coalesceBlock (child, blockId) {
+  async coalesceBlock(child, blockId) {
     const block = await child._readBlock(blockId)
     const { bitmap, data } = block
 
@@ -502,7 +487,7 @@ export default class Vhd {
   }
 
   // Write a context footer. (At the end and beginning of a vhd file.)
-  async writeFooter (onlyEndFooter = false) {
+  async writeFooter(onlyEndFooter = false) {
     const { footer } = this
 
     const rawFooter = fuFooter.pack(footer)
@@ -522,7 +507,7 @@ export default class Vhd {
     await this._write(rawFooter, offset)
   }
 
-  writeHeader () {
+  writeHeader() {
     const { header } = this
     const rawHeader = fuHeader.pack(header)
     header.checksum = checksumStruct(rawHeader, fuHeader)
@@ -535,7 +520,7 @@ export default class Vhd {
     return this._write(rawHeader, offset)
   }
 
-  async writeData (offsetSectors, buffer) {
+  async writeData(offsetSectors, buffer) {
     const bufferSizeSectors = Math.ceil(buffer.length / SECTOR_SIZE)
     const startBlock = Math.floor(offsetSectors / this.sectorsPerBlock)
     const endBufferSectors = offsetSectors + bufferSizeSectors
@@ -588,7 +573,7 @@ export default class Vhd {
     await this.writeFooter()
   }
 
-  async ensureSpaceForParentLocators (neededSectors) {
+  async ensureSpaceForParentLocators(neededSectors) {
     const firstLocatorOffset = FOOTER_SIZE + HEADER_SIZE
     const currentSpace =
       Math.floor(this.header.tableOffset / SECTOR_SIZE) -
@@ -602,7 +587,7 @@ export default class Vhd {
     return firstLocatorOffset
   }
 
-  async setUniqueParentLocator (fileNameString) {
+  async setUniqueParentLocator(fileNameString) {
     const { header } = this
     header.parentLocatorEntry[0].platformCode = PLATFORM_W2KU
     const encodedFilename = Buffer.from(fileNameString, 'utf16le')
