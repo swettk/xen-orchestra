@@ -81,8 +81,8 @@ class Name extends Component {
 
 // -----------------------------------------------------------------------------
 
-class DefaultNetwork extends Component {
-  _editDefaultNetwork = value => {
+class AutomaticNetwork extends Component {
+  _editAutomaticNetwork = value => {
     editNetwork(this.props.network, {
       other_config: {
         ...this.props.network.other_config,
@@ -96,7 +96,7 @@ class DefaultNetwork extends Component {
 
     return (
       <Toggle
-        onChange={this._editDefaultNetwork}
+        onChange={this._editAutomaticNetwork}
         value={
           network.other_config !== undefined &&
           network.other_config.automatic === 'true'
@@ -373,8 +373,8 @@ const NETWORKS_COLUMNS = [
       !isEmpty(network.PIFs) && <PifsItem network={network} />,
   },
   {
-    name: _('poolNetworkDefault'),
-    itemRenderer: network => <DefaultNetwork network={network} />,
+    name: _('poolNetworkAutomatic'),
+    itemRenderer: network => <AutomaticNetwork network={network} />,
   },
   {
     name: '',
