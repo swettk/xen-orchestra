@@ -98,8 +98,7 @@ class AutomaticNetwork extends Component {
       <Toggle
         onChange={this._editAutomaticNetwork}
         value={
-          network.other_config !== undefined &&
-          network.other_config.automatic === 'true'
+          network.other_config !== undefined && network.other_config.automatic
         }
       />
     )
