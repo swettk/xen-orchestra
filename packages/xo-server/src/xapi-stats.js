@@ -237,25 +237,22 @@ const STATS = {
 //     end: Number,
 //     rows: Number,
 //     columns: Number,
-//     legend: String []
+//     legend: String[rows]
 //   },
-//   data: [{
-//      t: Number,
-//      values: Number[],
-//    }]
+//   data: Item[columns] // Item = { t: Number, values: Number[rows] }
 // }
 
 // Local cache
 // _statsByObject : {
 //   [uuid]: {
 //     [step]: {
-//       endTimestamp: json.meta.end,
-//       localTimestamp: getCurrentTimestamp(),
-//       interval: step
+//       endTimestamp: Number, // the timestamp of the last statistic points
+//       localTimestamp: Number, // local timestamp, it's used for cache optimization
+//       interval: Number, // step
 //       stats: {
-//         metric1: Number[],
-//         metric2: {
-//           subMetric: Number[],
+//         [metric1]: Number[],
+//         [metric2]: {
+//           [subMetric]: Number[],
 //         }
 //       }
 //     }
@@ -284,18 +281,10 @@ export default class XapiStats {
       .then(response => response.readAll().then(JSON5.parse))
   }
 
-  async _getNextTimestamp(xapi, host, uuid, step) {
+  async _getOptimumTimestamp(xapi, host, step) {
     const currentTimeStamp = await getServerTimestamp(xapi, host.$ref)
     const maxDuration = step * RRD_POINTS_PER_STEP[step]
-    const lastTimestamp = this._statsByObject[uuid]?.[step]?.endTimestamp
-
-    if (
-      lastTimestamp === undefined ||
-      currentTimeStamp - lastTimestamp + step > maxDuration
-    ) {
-      return currentTimeStamp - maxDuration + step
-    }
-    return lastTimestamp
+    return currentTimeStamp - maxDuration + step
   }
 
   // To avoid multiple requests, we keep a cash for the stats and
@@ -334,7 +323,7 @@ export default class XapiStats {
       return stats
     }
 
-    const timestamp = await this._getNextTimestamp(xapi, host, uuid, step)
+    const timestamp = await this._getOptimumTimestamp(xapi, host, step)
     const json = await this._getJson(xapi, host, timestamp, step)
     if (json.meta.step !== step) {
       throw new FaultyGranularity(
