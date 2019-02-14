@@ -362,15 +362,15 @@ export default class XapiStats {
         }
 
         const xoObjectStats = createGetProperty(this._statsByObject, uuid, {})
-        const stepStats = xoObjectStats[step]
+        let stepStats = xoObjectStats[step]
         if (
           stepStats === undefined ||
           stepStats.localTimestamp !== localTimestamp
         ) {
-          xoObjectStats[step] = {
+          stepStats = xoObjectStats[step] = {
             endTimestamp: json.meta.end,
-            localTimestamp: localTimestamp,
             interval: step,
+            localTimestamp,
           }
         }
 
