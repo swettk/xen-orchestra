@@ -12,6 +12,7 @@
 - [Home/VM] Show creation date of the VM on if it available [#3953](https://github.com/vatesfr/xen-orchestra/issues/3953) (PR [#3959](https://github.com/vatesfr/xen-orchestra/pull/3959))
 - [Notifications] Fix invalid notifications when not registered (PR [#3966](https://github.com/vatesfr/xen-orchestra/pull/3966))
 - [Import] Fix import of some OVA files [#3962](https://github.com/vatesfr/xen-orchestra/issues/3962) (PR [##3974](https://github.com/vatesfr/xen-orchestra/pull/3974))
+- [Home] Fix VM vdis not migrated to the selected SR [#3986](https://github.com/vatesfr/xen-orchestra/issues/3986) (PR [#3987](https://github.com/vatesfr/xen-orchestra/pull/3987))
 
 ### Released packages
 
