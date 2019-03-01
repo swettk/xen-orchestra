@@ -35,6 +35,11 @@ const _showError = remote => alert(_('remoteConnectionFailed'), remote.error)
 const _editRemoteName = (name, { remote }) => editRemote(remote, { name })
 const _editRemoteOptions = (options, { remote }) =>
   editRemote(remote, { options: options !== '' ? options : null })
+const _editRemoteSpeed = (speed, remote) => {
+  editRemote(remote, {
+    speed: { write: speed.writeSpeed, read: speed.readSpeed },
+  })
+}
 
 const COLUMN_NAME = {
   itemRenderer: (remote, { formatMessage }) => (
@@ -77,7 +82,7 @@ const COLUMN_STATE = {
   name: _('remoteState'),
 }
 const COLUMN_DISK = {
-  itemRenderer: (remote, { formatMessage }) =>
+  itemRenderer: remote =>
     remote.info !== undefined &&
     remote.info.used !== undefined &&
     remote.info.size !== undefined && (
@@ -86,6 +91,19 @@ const COLUMN_DISK = {
       </span>
     ),
   name: _('remoteDisk'),
+}
+const COLUMN_SPEED = {
+  itemRenderer: remote => {
+    return (
+      remote.writeSpeed !== undefined &&
+      remote.readSpeed !== undefined && (
+        <span>
+          {`${formatSize(remote.writeSpeed)} / ${formatSize(remote.readSpeed)}`}
+        </span>
+      )
+    )
+  },
+  name: 'Speed (Write / Read)',
 }
 
 const fixRemoteUrl = remote => editRemote(remote, { url: format(remote) })
@@ -105,6 +123,7 @@ const COLUMNS_LOCAL_REMOTE = [
   },
   COLUMN_STATE,
   COLUMN_DISK,
+  COLUMN_SPEED,
 ]
 const COLUMNS_NFS_REMOTE = [
   COLUMN_NAME,
@@ -236,9 +255,10 @@ const GROUPED_ACTIONS = [
 const INDIVIDUAL_ACTIONS = [
   {
     disabled: remote => !remote.enabled,
-    handler: remote =>
-      testRemote(remote).then(
-        answer =>
+    handler: (remote, props) =>
+      testRemote(remote).then(answer => {
+        _editRemoteSpeed(answer, remote)
+        return (
           answer.success
             ? alert(
                 <span>
@@ -261,8 +281,9 @@ const INDIVIDUAL_ACTIONS = [
                   </dl>
                 </p>
               ),
-        noop
-      ),
+          noop
+        )
+      }),
     icon: 'diagnosis',
     label: _('remoteTestTip'),
     level: 'primary',
@@ -304,6 +325,10 @@ export default decorate([
       editRemote: (_, remote) => () => ({
         remote,
       }),
+      // speedRemote(_, remote, { writeSpeed, readSpeed }) {
+      //   const { state } = this
+      //   state.remoteSpeed[remote.id] = { writeSpeed, readSpeed }
+      // },
     },
     computed: {
       remoteWithInfo: (_, { remotes, remotesInfo }) =>
@@ -318,56 +343,59 @@ export default decorate([
     },
   }),
   injectState,
-  ({ state, effects, remotes = {}, intl: { formatMessage } }) => (
-    <div>
-      {!isEmpty(state.remoteWithInfo.file) && (
-        <div>
-          <h2>{_('remoteTypeLocal')}</h2>
-          <SortedTable
-            collection={state.remoteWithInfo.file}
-            columns={COLUMNS_LOCAL_REMOTE}
-            data-editRemote={effects.editRemote}
-            data-formatMessage={formatMessage}
-            filters={FILTERS}
-            groupedActions={GROUPED_ACTIONS}
-            individualActions={INDIVIDUAL_ACTIONS}
-            stateUrlParam='l'
-          />
-        </div>
-      )}
+  ({ state, effects, remotes = {}, intl: { formatMessage } }) =>
+    console.log('state', state) || (
+      <div>
+        {!isEmpty(state.remoteWithInfo.file) && (
+          <div>
+            <h2>{_('remoteTypeLocal')}</h2>
+            <SortedTable
+              collection={state.remoteWithInfo.file}
+              columns={COLUMNS_LOCAL_REMOTE}
+              data-editRemote={effects.editRemote}
+              data-formatMessage={formatMessage}
+              // data-speedRemote={effects.speedRemote}
+              // data-remoteSpeed={state.remoteSpeed}
+              filters={FILTERS}
+              groupedActions={GROUPED_ACTIONS}
+              individualActions={INDIVIDUAL_ACTIONS}
+              stateUrlParam='l'
+            />
+          </div>
+        )}
 
-      {!isEmpty(state.remoteWithInfo.nfs) && (
-        <div>
-          <h2>{_('remoteTypeNfs')}</h2>
-          <SortedTable
-            collection={state.remoteWithInfo.nfs}
-            columns={COLUMNS_NFS_REMOTE}
-            data-editRemote={effects.editRemote}
-            data-formatMessage={formatMessage}
-            filters={FILTERS}
-            groupedActions={GROUPED_ACTIONS}
-            individualActions={INDIVIDUAL_ACTIONS}
-            stateUrlParam='nfs'
-          />
-        </div>
-      )}
+        {!isEmpty(state.remoteWithInfo.nfs) && (
+          <div>
+            <h2>{_('remoteTypeNfs')}</h2>
+            <SortedTable
+              collection={state.remoteWithInfo.nfs}
+              columns={COLUMNS_NFS_REMOTE}
+              data-editRemote={effects.editRemote}
+              data-formatMessage={formatMessage}
+              filters={FILTERS}
+              groupedActions={GROUPED_ACTIONS}
+              individualActions={INDIVIDUAL_ACTIONS}
+              stateUrlParam='nfs'
+            />
+          </div>
+        )}
 
-      {!isEmpty(state.remoteWithInfo.smb) && (
-        <div>
-          <h2>{_('remoteTypeSmb')}</h2>
-          <SortedTable
-            collection={state.remoteWithInfo.smb}
-            columns={COLUMNS_SMB_REMOTE}
-            data-editRemote={effects.editRemote}
-            data-formatMessage={formatMessage}
-            filters={FILTERS}
-            groupedActions={GROUPED_ACTIONS}
-            individualActions={INDIVIDUAL_ACTIONS}
-            stateUrlParam='smb'
-          />
-        </div>
-      )}
-      <Remote formatMessage={formatMessage} key={state.formKey} />
-    </div>
-  ),
+        {!isEmpty(state.remoteWithInfo.smb) && (
+          <div>
+            <h2>{_('remoteTypeSmb')}</h2>
+            <SortedTable
+              collection={state.remoteWithInfo.smb}
+              columns={COLUMNS_SMB_REMOTE}
+              data-editRemote={effects.editRemote}
+              data-formatMessage={formatMessage}
+              filters={FILTERS}
+              groupedActions={GROUPED_ACTIONS}
+              individualActions={INDIVIDUAL_ACTIONS}
+              stateUrlParam='smb'
+            />
+          </div>
+        )}
+        <Remote formatMessage={formatMessage} key={state.formKey} />
+      </div>
+    ),
 ])

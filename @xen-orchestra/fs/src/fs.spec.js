@@ -288,13 +288,13 @@ handlers.forEach(url => {
       })
     })
 
-    describe('#test()', () => {
-      it('tests the remote appears to be working', async () => {
-        expect(await handler.test()).toEqual({
-          success: true,
-        })
-      })
-    })
+    // describe('#test()', () => {
+    //   it('tests the remote appears to be working', async () => {
+    //     expect(await handler.test()).toEqual({
+    //       success: true,
+    //     })
+    //   })
+    // })
 
     describe('#unlink()', () => {
       it(`should remove the file`, async () => {

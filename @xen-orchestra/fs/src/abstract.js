@@ -24,6 +24,10 @@ type RemoteInfo = { used?: number, size?: number }
 type File = FileDescriptor | string
 
 const checksumFile = file => file + '.checksum'
+const speed = (hrtime: Array, size: Number) => {
+  const seconds = (hrtime[0] + hrtime[1] / 1e9).toFixed(4)
+  return (size / 1e6 / seconds).toFixed(2) // in MB/s
+}
 
 const DEFAULT_TIMEOUT = 6e5 // 10 min
 
@@ -359,18 +363,29 @@ export default class RemoteHandlerAbstract {
   }
 
   async test(): Promise<Object> {
+    const FILE_SIZE = 1024 * 1024 * 10
     const testFileName = normalizePath(`${Date.now()}.test`)
-    const data = await fromCallback(cb => randomBytes(1024 * 1024, cb))
+    const data = await fromCallback(cb => randomBytes(FILE_SIZE, cb))
     let step = 'write'
     try {
+      const startWrite = process.hrtime()
       await this._outputFile(testFileName, data, { flags: 'wx' })
+      const endWrite = process.hrtime(startWrite)
+      console.log('abstract', '373', speed(endWrite, FILE_SIZE), 'MB/s')
+
       step = 'read'
+      const startRead = process.hrtime()
       const read = await this._readFile(testFileName, { flags: 'r' })
+      const endRead = process.hrtime(startRead)
+      console.log('abstract', '284', speed(endRead, FILE_SIZE), 'MB/s')
+
       if (!data.equals(read)) {
         throw new Error('output and input did not match')
       }
       return {
         success: true,
+        writeSpeed: speed(endWrite, FILE_SIZE),
+        readSpeed: speed(endRead, FILE_SIZE),
       }
     } catch (error) {
       return {

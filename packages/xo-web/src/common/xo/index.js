@@ -2101,10 +2101,12 @@ export const disableRemote = remote =>
     subscribeRemotes.forceRefresh
   )
 
-export const editRemote = (remote, { name, url, options }) =>
-  _call('remote.set', resolveIds({ remote, name, url, options }))::tap(() => {
-    testRemote(remote).catch(noop)
-  })
+export const editRemote = (remote, { name, url, options, speed }) =>
+  _call('remote.set', resolveIds({ remote, name, url, options, speed }))::tap(
+    () => {
+      testRemote(remote).catch(noop)
+    }
+  )
 
 export const listRemote = remote =>
   _call('remote.list', resolveIds({ id: remote }))::tap(

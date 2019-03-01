@@ -4,6 +4,7 @@ import { format, parse } from 'xo-remote-parser'
 import { getHandler } from '@xen-orchestra/fs'
 import { ignoreErrors, timeout } from 'promise-toolbox'
 import { noSuchObject } from 'xo-common/api-errors'
+import isEmpty from 'lodash/isEmpty'
 
 import * as sensitiveValues from '../sensitive-values'
 import patch from '../patch'
@@ -133,7 +134,7 @@ export default class {
     return /* await */ this.updateRemote(remote.get('id'), { enabled: true })
   }
 
-  updateRemote(id, { name, url, options, enabled }) {
+  updateRemote(id, { name, url, options, enabled, speed }) {
     const handlers = this._handlers
     const handler = handlers[id]
     if (handler !== undefined) {
@@ -146,16 +147,22 @@ export default class {
       url,
       options,
       enabled,
+      speed,
     })
   }
 
   @synchronized()
-  async _updateRemote(id, { url, ...props }) {
+  async _updateRemote(id, { url, speed, ...props }) {
     const remote = await this._getRemote(id)
 
     // url is handled separately to take care of obfuscated values
     if (typeof url === 'string') {
       remote.url = format(sensitiveValues.merge(parse(url), parse(remote.url)))
+    }
+
+    console.log('remotes', '161', speed)
+    if (speed !== undefined) {
+      remote.speed = isEmpty(speed) ? undefined : JSON.stringify(speed)
     }
 
     patch(remote, props)
